@@ -1,84 +1,95 @@
+
+
 /*
-  Debounce
-
-  Each time the input pin goes from LOW to HIGH (e.g. because of a push-button
-  press), the output pin is toggled from LOW to HIGH or HIGH to LOW. There's a
-  minimum delay between toggles to debounce the circuit (i.e. to ignore noise).
-
-  The circuit:
-  - LED attached from pin 13 to ground
-  - pushbutton attached from pin 2 to +5V
-  - 10 kilohm resistor attached from pin 2 to ground
-
-  - Note: On most Arduino boards, there is already an LED on the board connected
-    to pin 13, so you don't need any extra components for this example.
-
-  created 21 Nov 2006
-  by David A. Mellis
-  modified 30 Aug 2011
-  by Limor Fried
-  modified 28 Dec 2012
-  by Mike Walters
-  modified 30 Aug 2016
-  by Arturo Guadalupi
-
-  This example code is in the public domain.
-
-  http://www.arduino.cc/en/Tutorial/Debounce
+Physical buttons for Google Meet
+Including launch / end meeting; Mute/Unmute; Video On/Off
 */
 
 #include <Keyboard.h>
+#include <Bounce2.h>
 
 // constants won't change. They're used here to set pin numbers:
-const int buttonPin = 9;    // the number of the pushbutton pin
-const int ledPin = 16;      // the number of the LED pin
-const int ledPina = 10;      // the number of the LED pin
+const int mutePin = 9;    // Button for Mute/Unmute
+const int onPin = 8; // Button for On/Off
+const int vidPin = 7; // Button for Video Mute
+
+const int muteLed = 10;      // Led for Mute
+const int onLed = 16; // Led for on/off
+const int vidLed = 14; // Led for Video Mute
 
 // Variables will change:
-int ledState = HIGH;         // the current state of the output pin
-int buttonState;             // the current reading from the input pin
-int lastButtonState = HIGH;   // the previous reading from the input pin
-
+int muteState = LOW;        // the current state of the output pin
+int vidState = LOW;         // the current state of the output pin
+int onState = LOW;         // the current state of the output pin
+                   
 // the following variables are unsigned longs because the time, measured in
 // milliseconds, will quickly become a bigger number than can be stored in an int.
-unsigned long lastDebounceTime = 0;  // the last time the output pin was toggled
 unsigned long debounceDelay = 50;    // the debounce time; increase if the output flickers
 
+Bounce m = Bounce(); // Instantiate a Bounce object for mute
+Bounce v = Bounce(); // Instantiate a Bounce object for video
+Bounce o = Bounce(); // Instantiate a Bounce object for on
+
 void setup() {
-  pinMode(buttonPin, INPUT_PULLUP);
-  pinMode(ledPin, OUTPUT);
-  pinMode(ledPina, OUTPUT);
+
+/*
+  pinMode(mutePin, INPUT_PULLUP);
+  pinMode(onPin, INPUT_PULLUP);
+  pinMode(vidPin, INPUT_PULLUP);
+*/
+
+  //Setup Input Pins
+  m.attach(mutePin, INPUT_PULLUP);
+  o.attach(onPin, INPUT_PULLUP);
+  v.attach(vidPin, INPUT_PULLUP);
+
+  m.interval(50); // Use a debounce interval of 50 milliseconds
+  o.interval(50); // Use a debounce interval of 50 milliseconds
+  v.interval(50); // Use a debounce interval of 50 milliseconds
+
+  //Setup LED pins
+  pinMode(muteLed, OUTPUT);
+  pinMode(onLed, OUTPUT);
+  pinMode(vidLed, OUTPUT);
 
   // set initial LED state
-  digitalWrite(ledPin, ledState);
-  digitalWrite(ledPina, ledState);
+  digitalWrite(muteLed, muteState);
+  digitalWrite(onLed, onState);
+  digitalWrite(vidLed, vidState);
 }
 
 void loop() {
-  // read the state of the switch into a local variable:
-  int reading = digitalRead(buttonPin);
 
-  // check to see if you just pressed the button
-  // (i.e. the input went from LOW to HIGH), and you've waited long enough
-  // since the last press to ignore any noise:
+/*
+    Serial.print(digitalRead(mutePin));
+    Serial.print(digitalRead(vidPin));
+    Serial.print(digitalRead(onPin));
+    delay(1000);
+*/
+   m.update(); // Update the Bounce instance
 
-  // If the switch changed, due to noise or pressing:
-  if (reading != lastButtonState) {
-    // reset the debouncing timer
-    lastDebounceTime = millis();
-  }
+   if ( m.fell() ) { 
+     togMute();
+   }
 
-  if ((millis() - lastDebounceTime) > debounceDelay) {
-    // whatever the reading is at, it's been there for longer than the debounce
-    // delay, so take it as the actual current state:
+   o.update(); // Update the Bounce instance
+   
+   if ( o.fell() ) { 
+     togOn();
+   }
 
-    // if the button state has changed:
-    if (reading != buttonState) {
-      buttonState = reading;
+   v.update(); // Update the Bounce instance
+   
+   if ( v.fell() ) { 
+     togVid();
+   }
 
+}
+
+//Toggle the Mute command and LED
+void togMute() {
       // only toggle the LED if the new button state is HIGH
-      if (buttonState == HIGH) {
-        if (ledState == HIGH) {
+        if (muteState == HIGH) {
         Keyboard.press(KEY_LEFT_CTRL);
         Keyboard.press(KEY_LEFT_SHIFT);
         Keyboard.write('s');          
@@ -89,16 +100,66 @@ void loop() {
        Keyboard.write('a');          
        Keyboard.releaseAll();
           }
-        ledState = !ledState;
-        
-
-      }
-    }
-  }
+        muteState = !muteState;
 
   // set the LED:
-  digitalWrite(ledPin, ledState);
-  digitalWrite(ledPina, ledState);
-  // save the reading. Next time through the loop, it'll be the lastButtonState:
-  lastButtonState = reading;
+    digitalWrite(muteLed, muteState);
+//  digitalWrite(ledPina, ledState);
+
+}
+
+void togVid() {
+      if (vidState == HIGH) {
+        Keyboard.press(KEY_LEFT_CTRL);
+        Keyboard.press(KEY_LEFT_SHIFT);
+        Keyboard.write('g');
+        Keyboard.releaseAll();
+          } else {
+       Keyboard.press(KEY_LEFT_CTRL);
+        Keyboard.press(KEY_LEFT_SHIFT);
+       Keyboard.write('h');          
+       Keyboard.releaseAll();
+          }
+        vidState = !vidState;
+
+  // set the LED:
+  digitalWrite(vidLed, vidState);
+  Serial.print("ToggleVid");
+  Serial.print(onState);
+}
+
+void togOn() {
+      
+  if (onState == HIGH) {
+    Keyboard.press(KEY_LEFT_CTRL);
+    Keyboard.press(KEY_LEFT_SHIFT);
+    Keyboard.write('f');          
+    Keyboard.releaseAll();
+   vidState = LOW;
+   muteState = LOW;
+    
+      } else {
+        //Activate using TAB to get to the "Join" button, then SPACE
+   Keyboard.write(9);          
+   Keyboard.write(9);
+   Keyboard.write(9);       
+   Keyboard.write(9);          
+   Keyboard.write(9);
+   Keyboard.write(9);        
+   Keyboard.write(9);          
+   Keyboard.write(9);
+   Keyboard.write(9); 
+   Keyboard.write(32);              
+   vidState = HIGH;
+   muteState = HIGH;
+      }
+    onState = !onState;
+  Serial.print("ToggleOn");
+  Serial.print(onState);
+
+
+  // set the LED:
+  digitalWrite(onLed, onState);
+  digitalWrite(vidLed, vidState);
+  digitalWrite(muteLed, muteState);
 }
